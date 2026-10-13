@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>p5.js 選擇題測驗系統</title>
+  
+  <!-- Google Fonts 預連結與載入：Chiron GoRound TC 與 Lato -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@200..900&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap" rel="stylesheet">
+  
+  <!-- p5.js 程式庫 CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.js"></script>
+  
+  <style>
+    /* 設定全域預設字型，中文優先採用 Chiron GoRound TC，英文與數字採用 Lato */
+    body, button, input, select, textarea {
+      font-family: 'Chiron GoRound TC', 'Lato', sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow: hidden; /* 防止捲軸出現，維持全螢幕體驗 */
+      background-color: #f8f9fa;
+    }
+    
+    html, body {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <!-- 引入 sketch.js 邏輯程式 -->
+  <script src="sketch.js"></script>
+</body>
+</html>

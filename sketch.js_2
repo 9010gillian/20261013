@@ -1,0 +1,314 @@
+// 定義題目資料庫（共 5 題國小一年級加減法題目）
+let questions = [
+  {
+    question: "1. 3 + 4 = ?",
+    options: ["A. 5", "B. 6", "C. 7", "D. 8"],
+    answer: 2 // 正確答案索引（0代表第一個選項, 1代表第二個...）
+  },
+  {
+    question: "2. 9 - 5 = ?",
+    options: ["A. 3", "B. 4", "C. 5", "D. 6"],
+    answer: 1
+  },
+  {
+    question: "3. 小明有 2 支鉛筆，媽媽又給他 6 支，小明現在共有幾支鉛筆？",
+    options: ["A. 8 支", "B. 7 支", "C. 9 支", "D. 6 支"],
+    answer: 0
+  },
+  {
+    question: "4. 10 - 3 = ?",
+    options: ["A. 6", "B. 7", "C. 8", "D. 5"],
+    answer: 1
+  },
+  {
+    question: "5. 盤子裡有 8 個蘋果，吃了 8 個後，還剩下幾個？",
+    options: ["A. 1 個", "B. 8 個", "C. 2 個", "D. 0 個"],
+    answer: 3
+  }
+];
+
+// 系統狀態控制變數
+let currentQuestion = 0;   // 當前題目索引
+let score = 0;             // 累積答對題數
+let selectedOption = -1;   // 使用者選擇的選項（-1 代表尚未選擇）
+let isAnswered = false;    // 是否已經完成當前題目的作答
+let quizFinished = false;  // 測驗是否完全結束
+
+// UI 元件相關變數
+let nextButton;            // 下一題按鈕物件
+let optionButtons = [];    // 儲存四個選項按鈕的陣列
+let questionDiv;           // 顯示題目文字的 HTML 元素
+let resultDiv;             // 顯示結算畫面的 HTML 元素
+
+// 響應式計算參數（會在 recalculateLayout 函式中根據螢幕尺寸動態調整）
+let ui = {
+  titleSize: 24,
+  textSize: 20,
+  btnWidth: 300,
+  btnHeight: 50,
+  startY: 150,
+  spacing: 60,
+  isLandscapeMobile: false
+};
+
+function setup() {
+  // 建立全螢幕畫布
+  createCanvas(windowWidth, windowHeight);
+
+  // 建立專門顯示題目的 HTML 元素，設定黑色字體與中文字型
+  questionDiv = createDiv('');
+  questionDiv.style('font-family', "'Chiron GoRound TC', sans-serif");
+  questionDiv.style('color', '#000000'); // 設定題目為黑色字體
+  questionDiv.style('text-align', 'center');
+  questionDiv.style('font-weight', 'bold');
+
+  // 建立結算畫面的 HTML 元素
+  resultDiv = createDiv('');
+  resultDiv.style('font-family', "'Chiron GoRound TC', sans-serif");
+  resultDiv.style('color', '#000000');
+  resultDiv.style('text-align', 'center');
+  resultDiv.hide();
+
+  // 建立「下一題」按鈕
+  nextButton = createButton('下一題');
+  nextButton.style('font-family', "'Chiron GoRound TC', sans-serif");
+  nextButton.style('border-radius', '8px');
+  nextButton.style('border', 'none');
+  nextButton.style('background-color', '#4CAF50');
+  nextButton.style('color', 'white');
+  nextButton.style('cursor', 'pointer');
+  nextButton.style('box-shadow', '0 4px 6px rgba(0,0,0,0.1)');
+  nextButton.mousePressed(nextQuestion); // 綁定點擊事件函式
+  nextButton.hide();                     // 預設先隱藏按鈕
+
+  // 初始化並建立 4 個選項按鈕（套用 Isometra 字型）
+  for (let i = 0; i < 4; i++) {
+    let btn = createButton('');
+    btn.style('font-family', "'Isometra', 'Chiron GoRound TC', sans-serif"); // 設定選項使用 Isometra 字型
+    btn.style('color', '#1d3557'); // 設定選項文字（數字）為深藍色
+    btn.style('border-radius', '8px');
+    btn.style('border', '2px solid #ccc');
+    btn.style('cursor', 'pointer');
+    btn.style('box-shadow', '0 2px 4px rgba(0,0,0,0.05)');
+    // 使用閉包傳遞當前選項的索引給檢查答案的函式
+    btn.mousePressed(() => checkAnswer(i));
+    optionButtons.push(btn);
+  }
+
+  // 計算並套用適合當前螢幕尺寸的響應式參數
+  recalculateLayout();
+
+  // 載入第一題內容
+  loadQuestion();
+}
+
+function draw() {
+  // 設定背景顏色為溫和柔和的淺灰色
+  background(248, 249, 250);
+
+  // 判斷測驗是否已經結束
+  if (quizFinished) {
+    questionDiv.hide();
+    resultDiv.show();
+  } else {
+    questionDiv.show();
+    resultDiv.hide();
+    drawQuizScreen();   // 顯示答題互動畫面
+  }
+}
+
+// 根據視窗大小計算響應式佈局參數（適用於手機直向/橫向、平板與電腦）
+function recalculateLayout() {
+  let w = width;
+  let h = height;
+
+  // 判斷是否為手機橫向模式（高度小於 500 且寬度大於高度）
+  ui.isLandscapeMobile = (h < 500 && w > h);
+
+  if (ui.isLandscapeMobile) {
+    // 【手機橫向模式】
+    ui.titleSize = constrain(h * 0.06, 16, 22);
+    ui.textSize = constrain(h * 0.05, 14, 18);
+    ui.btnWidth = min(w * 0.6, 360);
+    ui.btnHeight = constrain(h * 0.1, 32, 42);
+    ui.startY = h * 0.28;
+    ui.spacing = ui.btnHeight + 8;
+  } else if (w < 600) {
+    // 【手機直向模式】
+    ui.titleSize = constrain(w * 0.055, 18, 24);
+    ui.textSize = constrain(w * 0.045, 15, 20);
+    ui.btnWidth = w * 0.85;
+    ui.btnHeight = constrain(h * 0.075, 45, 55);
+    ui.startY = h * 0.3;
+    ui.spacing = ui.btnHeight + 12;
+  } else if (w < 1024) {
+    // 【平板模式】
+    ui.titleSize = 26;
+    ui.textSize = 22;
+    ui.btnWidth = min(w * 0.7, 450);
+    ui.btnHeight = 55;
+    ui.startY = h * 0.32;
+    ui.spacing = 72;
+  } else {
+    // 【電腦桌面模式】
+    ui.titleSize = 30;
+    ui.textSize = 22;
+    ui.btnWidth = 400;
+    ui.btnHeight = 58;
+    ui.startY = h * 0.32;
+    ui.spacing = 76;
+  }
+
+  // 即時更新題目區塊的尺寸與字體大小
+  questionDiv.style('font-size', ui.titleSize + 'px');
+  questionDiv.style('width', (w * 0.88) + 'px');
+
+  // 即時更新結算區塊的尺寸與字體大小
+  resultDiv.style('font-size', (ui.titleSize * 1.2) + 'px');
+  resultDiv.style('width', (w * 0.9) + 'px');
+
+  // 即時更新「下一題」按鈕的尺寸與字體大小
+  nextButton.style('font-size', ui.textSize + 'px');
+  nextButton.style('padding', `${ui.btnHeight * 0.2}px ${ui.btnHeight * 0.5}px`);
+
+  // 即時更新 4 個選項按鈕的尺寸與字體大小
+  for (let i = 0; i < 4; i++) {
+    optionButtons[i].style('font-size', ui.textSize + 'px');
+    optionButtons[i].style('width', ui.btnWidth + 'px');
+    optionButtons[i].style('height', ui.btnHeight + 'px');
+  }
+}
+
+// 繪製測驗答題畫面的互動與跳動效果
+function drawQuizScreen() {
+  let q = questions[currentQuestion];
+
+  // 動態設定題目文字的位置（置中顯示於畫面上方）
+  let qY = ui.isLandscapeMobile ? height * 0.1 : height * 0.16;
+  questionDiv.position(width / 2 - (width * 0.88) / 2, qY);
+
+  // 更新 4 個選項按鈕的位置與動態跳動效果
+  for (let i = 0; i < 4; i++) {
+    let btn = optionButtons[i];
+    let currentY = ui.startY + i * ui.spacing;
+
+    if (isAnswered && i === q.answer) {
+      // 利用正弦波 sin() 與 millis() 計算上下跳動偏移量
+      let bounceY = sin(millis() * 0.01) * 8;
+      btn.position(width / 2 - ui.btnWidth / 2, currentY + bounceY);
+
+      if (selectedOption === q.answer) {
+        // 【答對時】：正確選項呈現綠色背景並上下跳動
+        btn.style('background-color', '#81c784');
+        btn.style('color', '#ffffff'); // 答對時文字改為白色以對比綠色背景
+        btn.style('font-weight', 'bold');
+        btn.style('border', '2px solid #66bb6a');
+      } else {
+        // 【答錯時】：正確選項呈現指定 #ccd5ae 背景並上下跳動
+        btn.style('background-color', '#ccd5ae');
+        btn.style('color', '#1d3557'); // 答錯時保持深藍色字體
+        btn.style('font-weight', 'bold');
+        btn.style('border', '2px solid #a3b18a');
+      }
+    } else {
+      // 預設或未觸發動畫的選項位置與樣式
+      btn.position(width / 2 - ui.btnWidth / 2, currentY);
+      btn.style('background-color', '#ffffff');
+      btn.style('color', '#1d3557'); // 保持深藍色字體
+      btn.style('font-weight', 'normal');
+      btn.style('border', '2px solid #ddd');
+    }
+  }
+
+  // 設定「下一題」按鈕的位置（居中置於選項下方）
+  let nextBtnY = ui.startY + 4 * ui.spacing + (ui.isLandscapeMobile ? 5 : 15);
+  let nextBtnX = width / 2 - (nextButton.elt.offsetWidth / 2 || 60);
+  nextButton.position(nextBtnX, nextBtnY);
+}
+
+// 載入題目資料至按鈕與畫面上
+function loadQuestion() {
+  isAnswered = false;
+  selectedOption = -1;
+  nextButton.hide(); // 隱藏下一題按鈕
+
+  let q = questions[currentQuestion];
+  // 將黑色字體的題目文字設定到 HTML 元素中（並讓其中的數字套用深藍色）
+  questionDiv.html(q.question);
+
+  // 更新 4 個選項按鈕的文字並解除禁用狀態
+  for (let i = 0; i < 4; i++) {
+    optionButtons[i].html(q.options[i]);
+    optionButtons[i].removeAttribute('disabled');
+    optionButtons[i].show();
+  }
+}
+
+// 檢查使用者選擇的答案
+function checkAnswer(index) {
+  // 如果已經作答過，防止重複點擊
+  if (isAnswered) return;
+
+  isAnswered = true;
+  selectedOption = index;
+
+  // 若答對則累積得分
+  if (index === questions[currentQuestion].answer) {
+    score++;
+  }
+
+  // 禁用所有選項按鈕，防止重複選取
+  for (let i = 0; i < 4; i++) {
+    optionButtons[i].attribute('disabled', '');
+  }
+
+  // 顯示「下一題」按鈕
+  nextButton.show();
+}
+
+// 切換至下一題或結束測驗
+function nextQuestion() {
+  currentQuestion++;
+
+  // 判斷是否還有下一題
+  if (currentQuestion < questions.length) {
+    loadQuestion();
+  } else {
+    // 全部題目完成，隱藏按鈕並顯示結算畫面
+    quizFinished = true;
+    nextButton.hide();
+    for (let i = 0; i < 4; i++) {
+      optionButtons[i].hide();
+    }
+    questionDiv.hide();
+    showResultScreen();
+  }
+}
+
+// 顯示測驗結束後的結算畫面
+function showResultScreen() {
+  resultDiv.show();
+  let resHtml = `🎉 測驗結束！<br><br>` +
+                `<span style="color: #1d3557;">你一共答對了 ${score} / ${questions.length} 題</span><br><br>`;
+
+  // 依據得分給予小朋友鼓勵評語
+  if (score === 5) {
+    resHtml += `太厲害了！你是數學小達人！💯`;
+  } else if (score >= 3) {
+    resHtml += `好棒！表現得很好喔！👏`;
+  } else {
+    resHtml += `再接再練，多練習就會更厲害喔！加油！💪`;
+  }
+
+  resultDiv.html(resHtml);
+  resultDiv.position(width / 2 - (width * 0.9) / 2, height * 0.3);
+}
+
+// 當使用者調整瀏覽器視窗大小或旋轉手機螢幕時，自動重新計算版面佈局
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight); // 調整畫布大小為全螢幕
+  recalculateLayout();                     // 重新計算響應式元件尺寸與間距
+  if (quizFinished) {
+    resultDiv.position(width / 2 - (width * 0.9) / 2, height * 0.3);
+  }
+}
